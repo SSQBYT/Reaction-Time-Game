@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reaction Time Test</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1f1f2e, #2c3e50);
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #game {
+      text-align: center;
+      background: #2c2c3c;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.15);
+      max-width: 420px;
+      width: 90%;
+      transition: background 0.5s ease, transform 0.3s ease;
+    }
+
+    #message {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      transition: color 0.3s ease;
+    }
+
+    #timer {
+      font-size: 2.8rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+
+    #level {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-top: 10px;
+      color: #00bcd4;
+    }
+
+    #stats {
+      font-size: 1rem;
+      margin-top: 10px;
+      opacity: 0.8;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 15px 35px;
+      font-size: 1.2rem;
+      background: #00bcd4;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: #00acc1;
+    }
+
+    .green {
+      background: #27ae60 !important;
+    }
+
+    .red {
+      background: #c0392b !important;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes flashRed {
+      0% { background-color: #c0392b; }
+      100% { background-color: #2c2c3c; }
+    }
+
+    .flash {
+      animation: flashRed 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="game" class="fade-in">
+    <div id="message">Click the button to start</div>
+    <div id="timer">--</div>
+    <div id="level"></div>
+    <div id="stats">
+      Best: <span id="best">--</span> ms |
+      Average: <span id="avg">--</span> ms
+    </div>
+    <button id="startButton" onclick="startGame()">Start</button>
+    <button id="clickButton" class="hidden" onclick="registerClick()">Click!</button>
+  </div>
+
+  <script>
+    let startTime, endTime;
+    let timeoutID;
+    let isReady = false;
+    let times = [];
+
+    const game = document.getElementById("game");
+    const message = document.getElementById("message");
+    const timer = document.getElementById("timer");
+    const level = document.getElementById("level");
+    const bestDisplay = document.getElementById("best");
+    const avgDisplay = document.getElementById("avg");
+    const startButton = document.getElementById("startButton");
+    const clickButton = document.getElementById("clickButton");
+
+    // Load stored times from localStorage
+    function loadStoredTimes() {
+      const stored = localStorage.getItem("reactionTimes");
+      if (stored) {
+        times = JSON.parse(stored);
+        updateStats();
+      }
+    }
+
+    // Save current times to localStorage
+    function saveTimes() {
+      localStorage.setItem("reactionTimes", JSON.stringify(times));
+    }
+
+    function startGame() {
+      game.classList.remove("green", "red", "flash");
+      game.classList.add("fade-in");
+      timer.textContent = "--";
+      level.textContent = "";
+      message.textContent = "Wait for green...";
+      startButton.classList.add("hidden");
+      clickButton.classList.remove("hidden");
+      clickButton.disabled = true;
+      isReady = false;
+
+      const delay = Math.random() * 3000 + 2000; // 2–5 seconds
+      timeoutID = setTimeout(() => {
+        game.classList.add("green");
+        game.classList.remove("fade-in");
+        message.textContent = "CLICK NOW!";
+        startTime = new Date().getTime();
+        isReady = true;
+        clickButton.disabled = false;
+      }, delay);
+    }
+
+    function registerClick() {
+      if (!isReady) {
+        clearTimeout(timeoutID);
+        game.classList.remove("green");
+        game.classList.add("red", "flash");
+        message.textContent = "Too soon! 👎";
+        timer.textContent = "--";
+        level.textContent = "";
+        clickButton.classList.add("hidden");
+        startButton.classList.remove("hidden");
+      } else {
+        endTime = new Date().getTime();
+        const reactionTime = endTime - startTime;
+        times.push(reactionTime);
+        saveTimes();
+
+        message.textContent = "Your reaction time:";
+        timer.textContent = `${reactionTime} ms`;
+        animateTimer();
+
+        updateStats(reactionTime);
+
+        clickButton.classList.add("hidden");
+        startButton.classList.remove("hidden");
+        isReady = false;
+      }
+    }
+
+    function animateTimer() {
+      timer.style.transform = "scale(1.2)";
+      setTimeout(() => {
+        timer.style.transform = "scale(1)";
+      }, 300);
+    }
+
+    function getLevelLabel(ms) {
+      if (ms <= 80) return "🧠 LEGEND";
+      if (ms <= 120) return "⚡ SUPERHUMAN";
+      if (ms <= 200) return "🔥 FAST";
+      if (ms <= 300) return "😐 Average Joe";
+      if (ms <= 500) return "🐢 Sloth";
+      return "😭 Just Quit Now";
+    }
+
+    function updateStats(latest) {
+      if (times.length === 0) return;
+
+      const best = Math.min(...times);
+      const avg = Math.round(times.reduce((a, b) => a + b) / times.length);
+
+      bestDisplay.textContent = best;
+      avgDisplay.textContent = avg;
+
+      if (latest !== undefined) {
+        level.textContent = getLevelLabel(latest);
+      }
+    }
+
+    // Load saved data on launch
+    loadStoredTimes();
+  </script>
+</body>
+</html>
